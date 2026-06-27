@@ -131,7 +131,13 @@ function formatDuration(seconds) {
   const value = seconds / chosen.secs;
   const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
   const display = rounded >= 1000 ? abbreviateNumber(rounded) : rounded.toString();
-  return `${display} ${chosen.label}${rounded === 1 ? '' : 's'}`;
+  return `${display} ${pluralizeUnit(chosen.label, rounded)}`;
+}
+
+function pluralizeUnit(label, count) {
+  if (count === 1) return label;
+  if (label === 'century') return 'centuries'; // irregular plural
+  return `${label}s`;
 }
 
 function abbreviateNumber(n) {
