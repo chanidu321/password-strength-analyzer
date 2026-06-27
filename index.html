@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="card">
+  <main class="card" id="card">
     <p class="eyebrow">Password Strength Analyzer</p>
     <h1>How strong is your password?</h1>
     <p class="subhead">Nothing you type here leaves your browser.</p>
@@ -33,6 +33,14 @@
       <p class="meter-label" id="meter-label">Enter a password to begin</p>
     </div>
 
+    <div class="crack-time-section hidden" id="crack-time-section">
+      <div class="stat">
+        <span class="stat-label">Estimated time to crack</span>
+        <span class="stat-value" id="crack-time">—</span>
+      </div>
+      <p class="stat-caption">Assuming 10 billion guesses per second — a fast offline attack scenario.</p>
+    </div>
+
     <ul class="checklist" id="checklist">
       <li data-check="length">At least 12 characters</li>
       <li data-check="case">Upper &amp; lowercase letters</li>
@@ -40,6 +48,11 @@
       <li data-check="symbol">At least one symbol</li>
       <li data-check="pattern">No obvious patterns or common words</li>
     </ul>
+
+    <div class="tips hidden" id="tips">
+      <p class="tips-heading">Suggestions</p>
+      <ul class="tips-list" id="tips-list"></ul>
+    </div>
   </main>
 
   <script src="script.js"></script>
