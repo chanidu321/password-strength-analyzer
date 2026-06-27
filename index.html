@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Password Strength Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="card">
+    <p class="eyebrow">Password Strength Analyzer</p>
+    <h1>How strong is your password?</h1>
+    <p class="subhead">Nothing you type here leaves your browser.</p>
+
+    <div class="input-wrap">
+      <input
+        type="text"
+        id="password-input"
+        class="password-input"
+        placeholder="Type a password to test"
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <button id="toggle-visibility" class="toggle-btn" type="button" aria-label="Toggle password visibility">Hide</button>
+    </div>
+
+    <div class="meter">
+      <div class="meter-track">
+        <div class="meter-fill" id="meter-fill"></div>
+      </div>
+      <p class="meter-label" id="meter-label">Enter a password to begin</p>
+    </div>
+
+    <ul class="checklist" id="checklist">
+      <li data-check="length">At least 12 characters</li>
+      <li data-check="case">Upper &amp; lowercase letters</li>
+      <li data-check="number">At least one number</li>
+      <li data-check="symbol">At least one symbol</li>
+      <li data-check="pattern">No obvious patterns or common words</li>
+    </ul>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
