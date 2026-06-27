@@ -17,9 +17,11 @@ const SEQUENCES = [
   'zxcvbnm'
 ];
 
+// Assumed attacker speed for the crack-time estimate below.
+const GUESSES_PER_SECOND = 1e10; // 10 billion guesses/sec, a fast offline attack
+
 function hasRepeatedChars(pw) {
-  // matches any character repeated 3+ times in a row, e.g. "aaa", "111"
-  return /(.)\1\1/.test(pw);
+  return /(.)\1\1/.test(pw); // same character 3+ times in a row
 }
 
 function hasSequentialChars(pw) {
@@ -86,11 +88,102 @@ function scoreToColor(score) {
   return `hsl(${hue}, 70%, 55%)`;
 }
 
+// --- Crack-time estimate ---
+// A simplified brute-force model: counts how many character categories
+// are actually used, raises that to the power of the password's length,
+// then divides by an assumed attack speed. This is a rough estimate for
+// learning purposes, not a precise cryptographic guarantee.
+function estimateCrackTime(pw) {
+  if (COMMON_PASSWORDS.includes(pw.toLowerCase())) {
+    return 'Instantly';
+  }
+
+  let charsetSize = 0;
+  if (/[a-z]/.test(pw)) charsetSize += 26;
+  if (/[A-Z]/.test(pw)) charsetSize += 26;
+  if (/[0-9]/.test(pw)) charsetSize += 10;
+  if (/[^A-Za-z0-9]/.test(pw)) charsetSize += 32;
+  if (charsetSize === 0) charsetSize = 1;
+
+  const combinations = Math.pow(charsetSize, pw.length);
+  const seconds = combinations / GUESSES_PER_SECOND;
+  return formatDuration(seconds);
+}
+
+function formatDuration(seconds) {
+  if (seconds < 1) return 'Instantly';
+
+  const units = [
+    { label: 'second', secs: 1 },
+    { label: 'minute', secs: 60 },
+    { label: 'hour', secs: 3600 },
+    { label: 'day', secs: 86400 },
+    { label: 'month', secs: 2592000 },
+    { label: 'year', secs: 31536000 },
+    { label: 'century', secs: 3153600000 }
+  ];
+
+  let chosen = units[0];
+  for (const unit of units) {
+    if (seconds >= unit.secs) chosen = unit;
+  }
+
+  const value = seconds / chosen.secs;
+  const rounded = value >= 100 ? Math.round(value) : Math.round(value * 10) / 10;
+  const display = rounded >= 1000 ? abbreviateNumber(rounded) : rounded.toString();
+  return `${display} ${chosen.label}${rounded === 1 ? '' : 's'}`;
+}
+
+function abbreviateNumber(n) {
+  const suffixes = ['', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp'];
+  let i = 0;
+  while (n >= 1000 && i < suffixes.length - 1) {
+    n /= 1000;
+    i++;
+  }
+  return `${n.toFixed(1)}${suffixes[i]}`;
+}
+
+// --- Suggestions ---
+function buildTips(checks) {
+  const tips = [];
+  if (!checks.length) tips.push('Use at least 12 characters — every extra character makes it exponentially harder to guess.');
+  if (!checks.case) tips.push('Mix uppercase and lowercase letters.');
+  if (!checks.number) tips.push('Add at least one number.');
+  if (!checks.symbol) tips.push('Add a symbol, like ! @ # or %.');
+  if (!checks.pattern) tips.push('Avoid repeated characters, keyboard sequences, or common passwords.');
+  return tips;
+}
+
+function renderTips(checks) {
+  tipsList.innerHTML = '';
+  const tips = buildTips(checks);
+
+  if (tips.length === 0) {
+    const li = document.createElement('li');
+    li.textContent = 'Nice — this password checks every box.';
+    li.classList.add('all-good');
+    tipsList.appendChild(li);
+    return;
+  }
+
+  tips.forEach((tip) => {
+    const li = document.createElement('li');
+    li.textContent = tip;
+    tipsList.appendChild(li);
+  });
+}
+
 const passwordInput = document.getElementById('password-input');
 const toggleBtn = document.getElementById('toggle-visibility');
 const meterFill = document.getElementById('meter-fill');
 const meterLabel = document.getElementById('meter-label');
 const checklistItems = document.querySelectorAll('#checklist li');
+const crackTimeSection = document.getElementById('crack-time-section');
+const crackTimeValue = document.getElementById('crack-time');
+const tipsSection = document.getElementById('tips');
+const tipsList = document.getElementById('tips-list');
+const card = document.getElementById('card');
 
 function render(pw) {
   if (pw.length === 0) {
@@ -100,6 +193,9 @@ function render(pw) {
     meterLabel.textContent = 'Enter a password to begin';
     meterLabel.style.color = 'var(--text-dim)';
     checklistItems.forEach((li) => li.classList.remove('met'));
+    crackTimeSection.classList.add('hidden');
+    tipsSection.classList.add('hidden');
+    card.classList.remove('is-strong');
     return;
   }
 
@@ -117,6 +213,15 @@ function render(pw) {
     const key = li.dataset.check;
     li.classList.toggle('met', checks[key]);
   });
+
+  crackTimeSection.classList.remove('hidden');
+  crackTimeValue.textContent = estimateCrackTime(pw);
+  crackTimeValue.style.color = color;
+
+  tipsSection.classList.remove('hidden');
+  renderTips(checks);
+
+  card.classList.toggle('is-strong', label === 'Strong');
 }
 
 passwordInput.addEventListener('input', (e) => render(e.target.value));
