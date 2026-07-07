@@ -180,6 +180,69 @@ function renderTips(checks) {
   });
 }
 
+// --- Breach check via HaveIBeenPwned k-Anonymity API ---
+// Step 1: Hash the password using SHA-1 (built into the browser, no library needed)
+async function sha1(str) {
+  const encoded = new TextEncoder().encode(str);
+  const hashBuffer = await crypto.subtle.digest('SHA-1', encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+// Step 2: Send only the first 5 characters of the hash to HIBP.
+// HIBP returns every hash in their database starting with those 5 chars.
+// Step 3: Check locally — does any returned hash match the rest of ours?
+// Returns the number of times the password was seen in breaches, or 0 if clean.
+async function checkBreach(pw) {
+  try {
+    const hash = await sha1(pw);
+    const prefix = hash.slice(0, 5);   // sent to HIBP
+    const suffix = hash.slice(5);      // kept secret, checked locally
+
+    const response = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    if (!response.ok) return null; // API error — don't show anything
+
+    const text = await response.text();
+    const lines = text.split('\n');
+
+    for (const line of lines) {
+      const [returnedSuffix, count] = line.split(':');
+      if (returnedSuffix.trim() === suffix) {
+        return parseInt(count.trim(), 10);
+      }
+    }
+    return 0; // not found in any breach
+  } catch {
+    return null; // network error — fail silently
+  }
+}
+
+// Renders the breach result banner below the suggestions section
+function renderBreachResult(count) {
+  let el = document.getElementById('breach-result');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'breach-result';
+    el.className = 'breach-result';
+    tipsSection.parentNode.insertBefore(el, tipsSection.nextSibling);
+  }
+
+  if (count === null) {
+    el.style.display = 'none';
+    return;
+  }
+
+  el.style.display = 'flex';
+  if (count === 0) {
+    el.className = 'breach-result breach-clean';
+    el.innerHTML = `<span class="breach-icon">✓</span><span>Not found in any known data breaches.</span>`;
+  } else {
+    const formatted = count.toLocaleString();
+    el.className = 'breach-result breach-found';
+    el.innerHTML = `<span class="breach-icon">⚠️</span><span>Found in <strong>${formatted}</strong> data breach${count === 1 ? '' : 'es'} — avoid using this password.</span>`;
+  }
+}
+
 const passwordInput = document.getElementById('password-input');
 const toggleBtn = document.getElementById('toggle-visibility');
 const meterFill = document.getElementById('meter-fill');
@@ -230,7 +293,37 @@ function render(pw) {
   card.classList.toggle('is-strong', label === 'Strong');
 }
 
-passwordInput.addEventListener('input', (e) => render(e.target.value));
+// Debounce: wait 600ms after the user stops typing before calling the HIBP API.
+// This avoids sending a request on every single keystroke.
+let debounceTimer = null;
+
+passwordInput.addEventListener('input', (e) => {
+  const pw = e.target.value;
+  render(pw); // scoring + UI update happens instantly as always
+
+  clearTimeout(debounceTimer);
+
+  if (pw.length === 0) {
+    renderBreachResult(null);
+    return;
+  }
+
+  // Show a loading state, then fire the API call after 600ms of no typing
+  debounceTimer = setTimeout(async () => {
+    let el = document.getElementById('breach-result');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'breach-result';
+      tipsSection.parentNode.insertBefore(el, tipsSection.nextSibling);
+    }
+    el.style.display = 'flex';
+    el.className = 'breach-result breach-loading';
+    el.innerHTML = '<span class="breach-icon">⏳</span><span>Checking against known breaches...</span>';
+
+    const count = await checkBreach(pw);
+    renderBreachResult(count);
+  }, 600);
+});
 
 toggleBtn.addEventListener('click', () => {
   const isHidden = passwordInput.type === 'password';
