@@ -20,11 +20,16 @@ I built this as a beginner project to practice vanilla JavaScript, DOM manipulat
 
 ## Running it locally
 
+1. Copy this command and paste it into your terminal:
+
 ```
 git clone https://github.com/chanidu321/password-strength-analyzer.git
 ```
 
-Then just open `index.html` in your browser. No build step, no dependencies, no npm install. If you're using VS Code, the Live Server extension is the easiest way to run it with auto-reload.
+2. Open the `password-strength-analyzer` folder that gets created
+3. Open `index.html` in your browser — or if you're using VS Code, right-click it and choose **Open with Live Server**
+
+No build step, no dependencies, no npm install needed.
 
 ## How it's organized
 
